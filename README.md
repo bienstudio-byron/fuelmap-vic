@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FuelMap VIC
 
-## Getting Started
+A map-first web application to find the cheapest fuel in Victoria, Australia.
 
-First, run the development server:
+## Features
+
+- **Map Interface**: View fuel stations on an interactive map.
+- **Real-time Pricing**: Displays latest fuel prices (simulated in demo mode).
+- **Filtering**: Filter by fuel type (U91, U95, U98, Diesel), brand, and radius.
+- **Details**: View station details including address and last updated time.
+- **Responsive**: Works on desktop and mobile.
+
+## Tech Stack
+
+- **Framework**: Next.js (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Map**: Leaflet (react-leaflet)
+- **State Management**: TanStack Query
+
+## Setup
+
+### 1. Clone the repository
+
+```bash
+git clone <repository-url>
+cd fuel-map-vic
+```
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+### 3. Environment Variables
+
+Create a `.env.local` file in the root directory.
+
+#### Getting Real Data (Servo Saver API)
+
+To use real data, you must apply for an API key from Service Victoria:
+
+1.  Visit the [Service Victoria Servo Saver API page](https://service.vic.gov.au/find-services/transport-and-driving/servo-saver/help-centre/servo-saver-public-api).
+2.  Submit an application for API access.
+3.  Once approved, you will receive an **API Key**.
+
+Add your key to the `.env.local` file:
+
+```env
+SERVO_SAVER_API_KEY=your_api_key_here
+```
+
+**Note:** Without this key, the application will automatically run in **Demo Mode**, generating realistic mock data for testing.
+
+### 4. Run locally
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deployment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This project is optimized for deployment on **Vercel**.
 
-## Learn More
+1.  Push your code to a Git repository (GitHub/GitLab/Bitbucket).
+2.  Import the project in Vercel.
+3.  Add the `SERVO_SAVER_API_KEY` to the Vercel project environment variables.
+4.  Deploy.
 
-To learn more about Next.js, take a look at the following resources:
+## License
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
