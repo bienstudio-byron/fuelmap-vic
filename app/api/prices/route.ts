@@ -39,16 +39,13 @@ export async function GET(request: NextRequest) {
   }
 
   const apiKey = process.env.SERVO_SAVER_API_KEY;
-  // Base URL derived from documentation Section 7.7
   const baseUrl = 'https://api.fuel.service.vic.gov.au/open-data/v1/fuel';
 
   try {
     if (!apiKey) {
-        // If no key, skip straight to fallback
         throw new Error('No API Key configured');
     }
 
-    // Construct headers as per Section 7.7 of documentation
     const headers = {
       'User-Agent': 'FuelMapVIC/1.0',
       'x-consumer-id': apiKey,
@@ -56,52 +53,47 @@ export async function GET(request: NextRequest) {
       'Accept': 'application/json'
     };
 
-    // Strategy: Fetch Stations using geospatial query
-    // Using radius (meters) as this is standard for Vic Gov APIs.
-    const stationsUrl = `${baseUrl}/stations?latitude=${lat}&longitude=${lng}&radius=${radiusKm * 1000}`;
+    // 1. Try the likely "Prices Search" endpoint pattern
+    // Based on the response schema provided, it returns "fuelPriceDetails".
+    // We'll try the standard geospatial query against the prices endpoint.
+    const pricesUrl = `${baseUrl}/prices?latitude=${lat}&longitude=${lng}&radius=${radiusKm * 1000}`;
     
-    console.log(`Fetching real data from: ${stationsUrl}`);
+    console.log(`Fetching real data from: ${pricesUrl}`);
 
-    const res = await fetch(stationsUrl, { headers, next: { revalidate: 300 } });
+    const res = await fetch(pricesUrl, { headers, next: { revalidate: 300 } });
     
     if (!res.ok) {
-      // Log text for debugging
       const errorText = await res.text();
       console.error(`Real API Failed: ${res.status}`, errorText);
       throw new Error(`API Error: ${res.status}`);
     }
 
     const data = await res.json();
-    // Assuming response shape: { stations: [...] } or just [...] based on typical Open Data
-    const apiStations = data.stations || data || [];
+    
+    // 2. Parse using the CONFIRMED schema from screenshot
+    // Schema: { fuelPriceDetails: [ { fuelStation: {...}, fuelPrices: [...] } ] }
+    const priceDetails = data.fuelPriceDetails || [];
 
-    if (!Array.isArray(apiStations)) {
-       throw new Error('Invalid API Response format');
+    if (!Array.isArray(priceDetails) || priceDetails.length === 0) {
+       throw new Error('No stations found in radius (Empty fuelPriceDetails)');
     }
 
-    if (apiStations.length === 0) {
-       // It's possible there are truly no stations, or the API requires a different geo-query.
-       // But we'll return empty list (and let frontend handle it) or throw to trigger fallback?
-       // Let's throw to trigger OSM fallback so the user at least sees "Smart Mock" stations.
-       throw new Error('No stations found in radius');
-    }
-
-    const mappedStations: StationPriceData[] = apiStations.map((s: any) => {
-        // Prices might be nested in the station object
-        const prices = (s.prices || []).map((p: any) => ({
-            stationId: s.code || s.id,
+    const mappedStations: StationPriceData[] = priceDetails.map((item: any) => {
+        const s = item.fuelStation;
+        const prices = (item.fuelPrices || []).map((p: any) => ({
+            stationId: s.id,
             fuelType: mapApiFuelTypeToInternal(p.fuelType),
             priceCpl: p.price,
-            updatedAt: p.lastUpdated || new Date().toISOString()
-        })).filter((p: any) => p.fuelType !== null);
+            updatedAt: p.updatedAt || new Date().toISOString()
+        })).filter((p: any) => p.fuelType !== null && p.price > 0); // Filter unavailable/null prices
 
         return {
-            id: s.code || s.id,
+            id: s.id,
             name: s.name,
-            brand: mapApiBrandToInternal(s.brand),
+            brand: mapApiBrandToInternal(s.brandId || s.name), // fallback to name if brandId is code
             address: s.address,
-            lat: s.location?.latitude || s.lat,
-            lng: s.location?.longitude || s.lng,
+            lat: s.location?.latitude,
+            lng: s.location?.longitude,
             prices
         };
     });
@@ -114,7 +106,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.warn('Using Fallback Data (Reason):', error);
     
-    // FALLBACK: OSM Real Locations + Smart Mock Prices
+    // Fallback to OSM + Smart Mock
     try {
        const { fetchStationsFromOSM } = await import('@/utils/osmFallback');
        const osmStations = await fetchStationsFromOSM(lat, lng, radiusKm);
@@ -129,7 +121,7 @@ export async function GET(request: NextRequest) {
        console.error('OSM Fallback failed:', osmError);
     }
     
-    // LAST RESORT: Random Mock Data
+    // Last Resort: Random Mock Data
     const mockData = generateMockStations(lat, lng, radiusKm);
     return NextResponse.json({
       stations: mockData,
